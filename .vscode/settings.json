@@ -1,0 +1,6 @@
+{
+    "files.associations": {
+        "hw_per_reset.h": "c",
+        "state_machine.h": "c"
+    }
+}
