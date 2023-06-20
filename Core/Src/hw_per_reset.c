@@ -41,6 +41,7 @@ void per_hw_timer_dispatcher(void){
 }
 
 void handler_ton(void){
+	//change to right hardreset pin
 	HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin,GPIO_PIN_RESET);
 	//for testing
 	uart_buf_len = sprintf(uart_buf, "TURN OFF\r\n");
@@ -67,6 +68,7 @@ void handler_ton(void){
 }
 
 void handler_toff(void){
+//	change to right hardreset pin
 	HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin,GPIO_PIN_SET);
 	//for testing
 	uart_buf_len = sprintf(uart_buf, "TURN ON\r\n");
@@ -123,11 +125,13 @@ void hw_per_reset(void *args){
 		HAL_RTC_GetAlarm(&hrtc, &sAlarm, RTC_ALARM_A, RTC_FORMAT_BIN); // call alarm_A
 		HAL_RTC_GetTime(&hrtc, &sTime, RTC_FORMAT_BIN); //it a must
 		HAL_RTC_GetDate(&hrtc, &sDate, RTC_FORMAT_BIN); //it a must
+		//for testing only
 		date_buffer_len = sprintf(date,"Date: %02d.%02d.%02d\t",sDate.Date,sDate.Month,sDate.Year);
 		HAL_UART_Transmit(&huart1, (uint8_t *) date	, date_buffer_len, 100);
 		time_buffer_len = sprintf(time,"Time: %02d.%02d.%02d\r\n",sTime.Hours,sTime.Minutes,sTime.Seconds);
 		HAL_UART_Transmit(&huart1, (uint8_t *) time	, time_buffer_len, 100);
 		osDelay(1000);
+		//for testing only
 		per_hw_reset_sm.dispatcher();
 	}
 

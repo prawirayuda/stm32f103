@@ -23,13 +23,13 @@
 
 
 extern UART_HandleTypeDef huart1;
-#define EXTERNAL_UART_HANDLE huart1
-
-#define USE_INTERNAL_UART 1 // using huart2
-
-#ifdef USE_INTERNAL_UART
-    extern UART_HandleTypeDef huart2;
-#endif 
+//#define EXTERNAL_UART_HANDLE huart1
+//
+//#define USE_INTERNAL_UART 1 // using huart2
+//
+//#ifdef USE_INTERNAL_UART
+//    extern UART_HandleTypeDef huart2;
+//#endif
 
 extern RTC_HandleTypeDef hrtc;
 extern RTC_TimeTypeDef sTime;

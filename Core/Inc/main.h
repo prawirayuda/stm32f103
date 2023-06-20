@@ -59,6 +59,34 @@ void Error_Handler(void);
 /* Private defines -----------------------------------------------------------*/
 #define LED_Pin GPIO_PIN_13
 #define LED_GPIO_Port GPIOC
+#define DEBUG_UART_TX_Pin GPIO_PIN_2
+#define DEBUG_UART_TX_GPIO_Port GPIOA
+#define DEBUG_UART_RX_Pin GPIO_PIN_3
+#define DEBUG_UART_RX_GPIO_Port GPIOA
+#define LED_DATA_Pin GPIO_PIN_0
+#define LED_DATA_GPIO_Port GPIOB
+#define LED_NW_Pin GPIO_PIN_1
+#define LED_NW_GPIO_Port GPIOB
+#define LED_PWR_Pin GPIO_PIN_2
+#define LED_PWR_GPIO_Port GPIOB
+#define MAIN_UART_TX_Pin GPIO_PIN_10
+#define MAIN_UART_TX_GPIO_Port GPIOB
+#define MAIN_UART_RX_Pin GPIO_PIN_11
+#define MAIN_UART_RX_GPIO_Port GPIOB
+#define READY_3V3_Pin GPIO_PIN_15
+#define READY_3V3_GPIO_Port GPIOB
+#define BACKUP_3V3_Pin GPIO_PIN_8
+#define BACKUP_3V3_GPIO_Port GPIOA
+#define RS232_TX_Pin GPIO_PIN_9
+#define RS232_TX_GPIO_Port GPIOA
+#define RS232_RX_Pin GPIO_PIN_10
+#define RS232_RX_GPIO_Port GPIOA
+#define WDT_FEED_3V3_Pin GPIO_PIN_4
+#define WDT_FEED_3V3_GPIO_Port GPIOB
+#define WDT_RESET_Pin GPIO_PIN_5
+#define WDT_RESET_GPIO_Port GPIOB
+#define HARD_RESET_Pin GPIO_PIN_9
+#define HARD_RESET_GPIO_Port GPIOB
 /* USER CODE BEGIN Private defines */
 
 /* USER CODE END Private defines */
