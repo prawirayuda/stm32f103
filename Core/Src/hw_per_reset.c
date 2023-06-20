@@ -11,6 +11,7 @@
 #include "state_machine.h"
 #define LED_Pin GPIO_PIN_13
 #define LED_GPIO_Port GPIOC
+#define TEST_UART huart3
 
 
 osThreadId_t hwPerTaskHandle;
@@ -45,7 +46,8 @@ void handler_ton(void){
 	HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin,GPIO_PIN_RESET);
 	//for testing
 	uart_buf_len = sprintf(uart_buf, "TURN OFF\r\n");
-	HAL_UART_Transmit(&huart1, (uint8_t *) uart_buf, uart_buf_len, 100);
+	HAL_UART_Transmit(&TEST_UART, (uint8_t *) uart_buf, uart_buf_len, 100);
+	//
     per_hw_reset_sm.state = PERIODICAL_HW_RESET_STATE_OFF_E;
 
     date_time_t timestamp;
@@ -72,7 +74,8 @@ void handler_toff(void){
 	HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin,GPIO_PIN_SET);
 	//for testing
 	uart_buf_len = sprintf(uart_buf, "TURN ON\r\n");
-	HAL_UART_Transmit(&huart1, (uint8_t *) uart_buf, uart_buf_len, 100);
+	HAL_UART_Transmit(&TEST_UART, (uint8_t *) uart_buf, uart_buf_len, 100);
+	//
     per_hw_reset_sm.state = PERIODICAL_HW_RESET_STATE_ON_E;
 
     date_time_t timestamp;
@@ -127,10 +130,10 @@ void hw_per_reset(void *args){
 		HAL_RTC_GetDate(&hrtc, &sDate, RTC_FORMAT_BIN); //it a must
 		//for testing only
 		date_buffer_len = sprintf(date,"Date: %02d.%02d.%02d\t",sDate.Date,sDate.Month,sDate.Year);
-		HAL_UART_Transmit(&huart1, (uint8_t *) date	, date_buffer_len, 100);
+		HAL_UART_Transmit(&TEST_UART, (uint8_t *) date	, date_buffer_len, 100);
 		time_buffer_len = sprintf(time,"Time: %02d.%02d.%02d\r\n",sTime.Hours,sTime.Minutes,sTime.Seconds);
-		HAL_UART_Transmit(&huart1, (uint8_t *) time	, time_buffer_len, 100);
-		osDelay(1000);
+		HAL_UART_Transmit(&TEST_UART, (uint8_t *) time	, time_buffer_len, 100);
+//		osDelay(1000);
 		//for testing only
 		per_hw_reset_sm.dispatcher();
 	}

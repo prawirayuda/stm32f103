@@ -23,6 +23,7 @@
 
 
 extern UART_HandleTypeDef huart1;
+extern UART_HandleTypeDef huart3;
 //#define EXTERNAL_UART_HANDLE huart1
 //
 //#define USE_INTERNAL_UART 1 // using huart2
