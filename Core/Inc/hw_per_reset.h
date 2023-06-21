@@ -16,8 +16,8 @@
 #include "julian_date_util.h"
 
 
-#define TIME_TURN_ON 3
-#define TIME_TURN_OFF 5
+#define TIME_TURN_ON 120
+#define TIME_TURN_OFF 604800
 #define HARD_RESET_CTRL_LOGIC 1
 
 
@@ -52,6 +52,7 @@ enum{
 
 enum{
 	EVENT_FLAG_HW_RESET_E =  0x01 << 0,
+//	EVENT_FLAG_WDT_E = 0x01 <<1
 //	EVENT_FLAG_UART_E = 0x01 << 1
 };
 

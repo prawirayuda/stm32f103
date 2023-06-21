@@ -1,13 +1,12 @@
 /*
  * led_indicator.h
  *
- *  Created on: Jun 20, 2023
- *      Author: muham
+ *  Created on: Jan 17, 2023
+ *      Author: admin
  */
 
 #ifndef INC_LED_INDICATOR_H_
 #define INC_LED_INDICATOR_H_
-
 
 /* GPIO Style switch */
 #define GPIO_STYLE_STM_HAL
@@ -107,7 +106,8 @@ struct led_indicator_client{
     struct led_pattern_list *curr_led_pattern;
 };
 
-void led_indicator_task(void *argument);
+//void led_indicator_task(void *argument);
+void led_task_init(void *args);
 uint8_t led_indicator_client_set_state(
 #ifdef LED_INDICATOR_CLIENT_IS_HANDLE
 		void			*handle,
@@ -116,5 +116,4 @@ uint8_t led_indicator_client_set_state(
 #endif
 		uint8_t		desired_state
 );
-
 #endif /* INC_LED_INDICATOR_H_ */

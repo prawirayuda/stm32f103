@@ -156,6 +156,7 @@ __weak void error_urc_handle(uint8_t *data, uint16_t len){
 		//doing something
 		if (urc_conn.get_connectivity == 1)
 		{
+			//adding led indicator pattern for connection
 			osEventFlagsSet(connection_flag_event, SOCKET_CONNECTED_E);
 			urc_conn.get_connectivity = 0;
 		}

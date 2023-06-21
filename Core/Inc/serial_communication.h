@@ -19,7 +19,7 @@
 #include "stm32f1xx_hal.h"
 #include "cmsis_os.h"
 
-#define UART_BUFFER_SIZE 255
+#define UART_BUFFER_SIZE 128
 
 extern UART_HandleTypeDef huart2;
 #define EXTERNAL_UART_HANDLE huart2

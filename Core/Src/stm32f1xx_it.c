@@ -33,7 +33,8 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
+//#define LED_Pin GPIO_PIN_13
+//#define LED_GPIO_Port GPIOC
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/

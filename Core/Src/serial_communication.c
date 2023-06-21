@@ -60,7 +60,7 @@ const osThreadAttr_t serialCommExtRxTask_attributes = {
 osThreadId_t sercomCommonTxTaskHandle;
 const osThreadAttr_t sercomCommonTxTask_attributes = {
 	.name = "sercomCommonTxTask",
-	.stack_size = 128*8,
+	.stack_size = 128*4,
 	.priority = (osPriority_t) osPriorityNormal
 };
 

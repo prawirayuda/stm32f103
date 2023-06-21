@@ -1,10 +1,9 @@
 /*
  * led_indicator.c
  *
- *  Created on: Jun 20, 2023
- *      Author: muham
+ *  Created on: Jan 17, 2023
+ *      Author: admin
  */
-
 
 
 #include <stdio.h>
@@ -27,6 +26,7 @@ struct led_pattern_list *construct_state_pattern_list(
 		...
 );
 
+static void create_led_gpio_mutex(void);
 void led_indicator_timer_callback(void *args);
 unsigned int getFirstSetBitPos(int n);
 
@@ -67,10 +67,37 @@ unsigned int getFirstSetBitPos(int n);
 													NO_OF_PATTERN_IN_STATUS_STATE_DATA_CONN + \
 													NO_OF_PATTERN_IN_STATUS_STATE_TRANSMITTING
 
+#define LED_STATE_PERIOD_500_MS						500
+#define LED_STATE_PERIOD_1000_MS					1000
+#define LED_STATE_PERIOD_1500_MS					LED_STATE_PERIOD_500_MS + LED_STATE_PERIOD_1000_MS
+#define LED_STATE_PERIOD_2000_MS					LED_STATE_PERIOD_1000_MS + LED_STATE_PERIOD_1000_MS
+#define LED_STATE_PERIOD_2500_MS					LED_STATE_PERIOD_2000_MS + LED_STATE_PERIOD_500_MS
+
 extern struct tsm_UARTHandle externalComm;
 extern struct tsm_UARTHandle internalComm;
 extern osEventFlagsId_t uart_xfer_event_group;
 extern processor_handle_t urc_processor_hndl;
+
+//**************************************************************************************
+// Mutex for LED GPIOs
+//**************************************************************************************
+osMutexId_t mutex_led_gpio_id;
+const osMutexAttr_t mutex_led_gpio_attr = {
+  "ledGpioMutex",                          // human readable mutex name
+  osMutexRecursive | osMutexPrioInherit,    // attr_bits
+  NULL,                                     // memory for control block
+  0U                                        // size for control block
+};
+
+//**************************************************************************************
+// Thread and task
+//**************************************************************************************
+osThreadId_t ledIndicatorTaskHandle;
+const osThreadAttr_t ledIndicatorTask_attributes = {
+	.name = "ledIndicatorTask",
+	.stack_size = 128 * 8,
+	.priority = (osPriority_t) osPriorityNormal
+};
 
 // TODO event flag creation might fail and return NULL
 static osEventFlagsId_t led_indicator_event_id;
@@ -88,8 +115,10 @@ struct led_pattern_list status_state_pattern_mem[NO_OF_PATTERN_IN_STATUS_STATE_T
 static struct led_indicator_client led_indicator_clients[NO_OF_CLIENTS] = {
 		{
 				.client_name = "power",
-				.GPIOx = LED_PWR_GPIO_Port,
-				.GPIO_Pin = LED_PWR_Pin,
+//				.GPIOx = LED_PWR_GPIO_Port,
+//				.GPIO_Pin = LED_PWR_Pin,
+				.GPIOx = LED_GPIO_Port,
+				.GPIO_Pin = LED_Pin,
 				.no_of_client_state = NO_OF_POWER_STATE,
 				.flag_bit = 0x1U << 0
 		},
@@ -109,6 +138,14 @@ static struct led_indicator_client led_indicator_clients[NO_OF_CLIENTS] = {
 		}
 };
 
+static void create_led_gpio_mutex(void) {
+  mutex_led_gpio_id = osMutexNew(&mutex_led_gpio_attr);
+  if (mutex_led_gpio_id == NULL)  {
+	return;
+    // Mutex object not created
+  }
+}
+
 void network_tech_changed_indication(uint8_t *data, uint16_t len){
 	osStatus_t ret;
 	// Signal TX Thread data is available
@@ -125,22 +162,24 @@ void network_tech_changed_indication(uint8_t *data, uint16_t len){
 }
 
 static void led_indicator_init(void){
+	osStatus_t status;
 	// OS Component Initialize
 		led_indicator_event_id = osEventFlagsNew(NULL);
+		create_led_gpio_mutex();
 
 		// Initialize Power Client
 
 		power_state_patterns[LED_INDICATOR_CLIENT_STATE_POWER_OFF_E] = construct_state_pattern_list(
 			&power_state_pattern_mem[LED_INDICATOR_CLIENT_STATE_POWER_OFF_E],
 			NO_OF_PATTERN_IN_POWER_STATE_OFF,
-			(struct led_pattern){0, 500}
+			(struct led_pattern){GPIO_PIN_RESET, LED_STATE_PERIOD_500_MS}
 		);
 
 		power_state_patterns[LED_INDICATOR_CLIENT_STATE_POWER_ON_E] = construct_state_pattern_list(
 			&power_state_pattern_mem[LED_INDICATOR_CLIENT_STATE_POWER_OFF_E] + \
 				NO_OF_PATTERN_IN_POWER_STATE_OFF,
 			NO_OF_PATTERN_IN_POWER_STATE_ON,
-			(struct led_pattern){1, 500}
+			(struct led_pattern){GPIO_PIN_SET, LED_STATE_PERIOD_500_MS}
 		);
 
 		power_state_patterns[LED_INDICATOR_CLIENT_STATE_POWER_BACKUP_E] = construct_state_pattern_list(
@@ -148,8 +187,8 @@ static void led_indicator_init(void){
 				NO_OF_PATTERN_IN_POWER_STATE_OFF + \
 				NO_OF_PATTERN_IN_POWER_STATE_ON,
 			NO_OF_PATTERN_IN_POWER_STATE_BACKUP,
-			(struct led_pattern){1, 500},
-			(struct led_pattern){0, 2500}
+			(struct led_pattern){GPIO_PIN_SET, LED_STATE_PERIOD_500_MS},
+			(struct led_pattern){GPIO_PIN_RESET, LED_STATE_PERIOD_2500_MS}
 		);
 
 		// Populate Clients' Handle
@@ -166,7 +205,7 @@ static void led_indicator_init(void){
 				construct_state_pattern_list(
 						&network_state_pattern_mem[LED_INDICATOR_CLIENT_STATE_NETWORK_IDLE_OFF_E],
 			NO_OF_PATTERN_IN_NETWORK_STATE_IDLE_OFF,
-			(struct led_pattern){0, 500}
+			(struct led_pattern){GPIO_PIN_RESET, LED_STATE_PERIOD_500_MS}
 		);
 
 		network_state_patterns[LED_INDICATOR_CLIENT_STATE_NETWORK_REGISTERING_E] = \
@@ -174,8 +213,8 @@ static void led_indicator_init(void){
 						&(network_state_pattern_mem[LED_INDICATOR_CLIENT_STATE_NETWORK_IDLE_OFF_E]) + \
 						NO_OF_PATTERN_IN_NETWORK_STATE_IDLE_OFF,
 			NO_OF_PATTERN_IN_NETWORK_STATE_REGISTERING,
-			(struct led_pattern){1, 500},
-			(struct led_pattern){0, 500}
+			(struct led_pattern){GPIO_PIN_SET, LED_STATE_PERIOD_500_MS},
+			(struct led_pattern){GPIO_PIN_RESET, LED_STATE_PERIOD_500_MS}
 		);
 
 		network_state_patterns[LED_INDICATOR_CLIENT_STATE_NETWORK_CONENCTED_2G_E] = \
@@ -184,8 +223,8 @@ static void led_indicator_init(void){
 				NO_OF_PATTERN_IN_NETWORK_STATE_IDLE_OFF + \
 				NO_OF_PATTERN_IN_NETWORK_STATE_REGISTERING,
 			NO_OF_PATTERN_IN_NETWORK_STATE_CONNECTED_2G,
-			(struct led_pattern){1, 500},
-			(struct led_pattern){0, 2500}
+			(struct led_pattern){GPIO_PIN_SET, LED_STATE_PERIOD_500_MS},
+			(struct led_pattern){GPIO_PIN_RESET, LED_STATE_PERIOD_2500_MS}
 		);
 
 		network_state_patterns[LED_INDICATOR_CLIENT_STATE_NETWORK_CONNECTED_3G_E] = construct_state_pattern_list(
@@ -194,8 +233,8 @@ static void led_indicator_init(void){
 				NO_OF_PATTERN_IN_NETWORK_STATE_REGISTERING + \
 				NO_OF_PATTERN_IN_NETWORK_STATE_CONNECTED_2G,
 			NO_OF_PATTERN_IN_NETWORK_STATE_CONNECTED_3G,
-			(struct led_pattern){1, 1000},
-			(struct led_pattern){0, 2000}
+			(struct led_pattern){GPIO_PIN_SET, LED_STATE_PERIOD_1000_MS},
+			(struct led_pattern){GPIO_PIN_RESET, LED_STATE_PERIOD_2000_MS}
 		);
 
 		network_state_patterns[LED_INDICATOR_CLIENT_STATE_NETWORK_CONNECTED_4G_E] = construct_state_pattern_list(
@@ -205,8 +244,8 @@ static void led_indicator_init(void){
 				NO_OF_PATTERN_IN_NETWORK_STATE_CONNECTED_2G + \
 				NO_OF_PATTERN_IN_NETWORK_STATE_CONNECTED_3G,
 			NO_OF_PATTERN_IN_NETWORK_STATE_CONNECTED_4G,
-			(struct led_pattern){1, 1500},
-			(struct led_pattern){0, 2500}
+			(struct led_pattern){GPIO_PIN_SET, LED_STATE_PERIOD_1500_MS},
+			(struct led_pattern){GPIO_PIN_RESET, LED_STATE_PERIOD_2500_MS}
 		);
 
 		network_state_patterns[LED_INDICATOR_CLIENT_STATE_NETWORK_ERROR_E] = construct_state_pattern_list(
@@ -217,7 +256,7 @@ static void led_indicator_init(void){
 					NO_OF_PATTERN_IN_NETWORK_STATE_CONNECTED_3G + \
 					NO_OF_PATTERN_IN_NETWORK_STATE_CONNECTED_4G,
 				NO_OF_PATTERN_IN_NETWORK_STATE_ERROR,
-				(struct led_pattern){1, 1000}
+				(struct led_pattern){GPIO_PIN_SET, LED_STATE_PERIOD_1000_MS}
 			);
 
 		// Populate Clients' Handle
@@ -231,14 +270,14 @@ static void led_indicator_init(void){
 		status_state_patterns[LED_INDICATOR_CLIENT_STATE_STATUS_NO_DATA_E] = construct_state_pattern_list(
 			&status_state_pattern_mem[LED_INDICATOR_CLIENT_STATE_STATUS_NO_DATA_E],
 			NO_OF_PATTERN_IN_STATUS_STATE_NO_DATA,
-			(struct led_pattern){0, 500}
+			(struct led_pattern){GPIO_PIN_RESET, LED_STATE_PERIOD_500_MS}
 		);
 
 		status_state_patterns[LED_INDICATOR_CLIENT_STATE_STATUS_DATA_CONN_E] = construct_state_pattern_list(
 			&(status_state_pattern_mem[LED_INDICATOR_CLIENT_STATE_STATUS_NO_DATA_E]) + \
 				NO_OF_PATTERN_IN_STATUS_STATE_NO_DATA,
 				NO_OF_PATTERN_IN_STATUS_STATE_DATA_CONN,
-			(struct led_pattern){1, 500}
+			(struct led_pattern){GPIO_PIN_SET, LED_STATE_PERIOD_500_MS}
 		);
 
 		status_state_patterns[LED_INDICATOR_CLIENT_STATE_STATUS_DATA_TRANSMITTING_E] = construct_state_pattern_list(
@@ -246,8 +285,8 @@ static void led_indicator_init(void){
 				NO_OF_PATTERN_IN_STATUS_STATE_NO_DATA + \
 				NO_OF_PATTERN_IN_STATUS_STATE_DATA_CONN,
 			NO_OF_PATTERN_IN_STATUS_STATE_TRANSMITTING,
-			(struct led_pattern){1, 500},
-			(struct led_pattern){0, 500}
+			(struct led_pattern){GPIO_PIN_SET, LED_STATE_PERIOD_500_MS},
+			(struct led_pattern){GPIO_PIN_RESET, LED_STATE_PERIOD_500_MS}
 		);
 
 
@@ -272,25 +311,31 @@ static void led_indicator_init(void){
 
 			// Create timer
 			led_indicator_clients[i].timer_id = osTimerNew(led_indicator_timer_callback, osTimerOnce, &led_indicator_clients[i].flag_bit, NULL);
+
 			// Set initial led state
 			HAL_GPIO_WritePin(led_indicator_clients[i].GPIOx, led_indicator_clients[i].GPIO_Pin, led_indicator_clients[i].curr_led_pattern->pattern.level);
+
 			// Start Timer
 			osTimerStart(led_indicator_clients[i].timer_id, led_indicator_clients[i].curr_led_pattern->pattern.period_ms);
 		}
 }
 
 void led_indicator_task(void *argument){
+	osStatus_t status;
 	uint32_t resultFlag = 0x0000;
 	uint32_t flagMask = 0x07;
 	uint8_t firstSetBitPos;
 	led_indicator_init();
+	led_indicator_client_set_state(LED_INDICATOR_CLIENT_POWER_E, LED_INDICATOR_CLIENT_STATE_POWER_ON_E);
 
 	while (1){
 		resultFlag = osEventFlagsWait(led_indicator_event_id, flagMask, osFlagsWaitAny, osWaitForever);
 		while (resultFlag){
 			firstSetBitPos = getFirstSetBitPos(resultFlag) - 1;
 			led_indicator_clients[firstSetBitPos].curr_led_pattern = led_indicator_clients[firstSetBitPos].curr_led_pattern->next;
+
 			HAL_GPIO_WritePin(led_indicator_clients[firstSetBitPos].GPIOx, led_indicator_clients[firstSetBitPos].GPIO_Pin, led_indicator_clients[firstSetBitPos].curr_led_pattern->pattern.level);
+
 			osTimerStart(led_indicator_clients[firstSetBitPos].timer_id, led_indicator_clients[firstSetBitPos].curr_led_pattern->pattern.period_ms);
 			resultFlag &= ~(0x1U << firstSetBitPos);
 		}
@@ -345,6 +390,8 @@ uint8_t led_indicator_client_set_state(
 #endif
 		uint8_t		desired_state
 ){
+	osStatus_t status;
+
 	// Sanitize input
 	if (client_id > NO_OF_CLIENTS - 1){ // Client ID is 0 indexed
 		return LED_INDICATOR_SET_STATE_ERR_INVALID_CLIENT_E;
@@ -362,12 +409,26 @@ uint8_t led_indicator_client_set_state(
 	led_indicator_clients[client_id].curr_led_pattern = \
 			led_indicator_clients[client_id].client_state_data[desired_state];
 
+#if 1
+	status = osMutexAcquire(mutex_led_gpio_id, osWaitForever);
+	if (status != osOK)  {
+	  // handle failure code
+	}
+#endif
+
 	// Write GPIO Level
 	HAL_GPIO_WritePin(
 		led_indicator_clients[client_id].GPIOx,
 		led_indicator_clients[client_id].GPIO_Pin,
 		led_indicator_clients[client_id].curr_led_pattern->pattern.level
 	);
+
+#if 1
+	status = osMutexRelease(mutex_led_gpio_id);
+	if (status != osOK)  {
+	  // handle failure code
+	}
+#endif
 
 	// Start Timer Again
 	osTimerStart(
@@ -386,4 +447,9 @@ void led_indicator_timer_callback(void *args){
 // helper function to get the first set bit
 unsigned int getFirstSetBitPos(int n){
 	return log2(n & -n) + 1;
+}
+
+void led_task_init(void *args){
+	ledIndicatorTaskHandle = osThreadNew(led_indicator_task, NULL, &ledIndicatorTask_attributes);
+//	led_indicator_client_set_state(LED_INDICATOR_CLIENT_POWER_E, LED_INDICATOR_CLIENT_STATE_POWER_ON_E);
 }

@@ -22,8 +22,13 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include <stdio.h>
 #include "hw_per_reset.h"
 #include "serial_communication.h"
+//#include "boot.h"
+#include "wdt_task.h"
+//#include "socket.h"
+#include "led_indicator.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -69,6 +74,8 @@ const osEventFlagsAttr_t myEvent01_attributes = {
 };
 /* USER CODE BEGIN PV */
 
+
+
 RTC_TimeTypeDef sTime = {0};
 RTC_DateTypeDef sDate = {0};
 RTC_AlarmTypeDef sAlarm = {0};
@@ -94,7 +101,7 @@ static void MX_TIM3_Init(void);
 void StartDefaultTask(void *argument);
 
 /* USER CODE BEGIN PFP */
-
+void modem_at_handle(uint8_t *data, uint16_t len);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -118,7 +125,6 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
-  hw_per_reset_init(NULL);
   /* USER CODE END Init */
 
   /* Configure the system clock */
@@ -165,7 +171,11 @@ int main(void)
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
-  hw_per_reset_init(NULL);
+//  hw_per_reset_init(NULL);
+  sercomm_init(NULL);
+  wdt_task_init(NULL);
+//  boot_init(NULL);
+//  socket_init();
   /* USER CODE END RTOS_THREADS */
 
   /* Create the event(s) */
@@ -312,9 +322,9 @@ static void MX_TIM3_Init(void)
 
   /* USER CODE END TIM3_Init 1 */
   htim3.Instance = TIM3;
-  htim3.Init.Prescaler = 0;
+  htim3.Init.Prescaler = 6399;
   htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim3.Init.Period = 65535;
+  htim3.Init.Period = 799;
   htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim3) != HAL_OK)
@@ -323,6 +333,10 @@ static void MX_TIM3_Init(void)
   }
   sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
   if (HAL_TIM_ConfigClockSource(&htim3, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_OnePulse_Init(&htim3, TIM_OPMODE_SINGLE) != HAL_OK)
   {
     Error_Handler();
   }
@@ -528,6 +542,19 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 4 */
 
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
+//	 bool prev
+	 if ((GPIO_Pin & BACKUP_3V3_Pin) && (HAL_GPIO_ReadPin(BACKUP_3V3_GPIO_Port, BACKUP_3V3_Pin) == GPIO_PIN_RESET))
+	 {
+		 led_indicator_client_set_state(LED_INDICATOR_CLIENT_POWER_E, LED_INDICATOR_CLIENT_STATE_POWER_BACKUP_E);
+	 }
+	 if ((GPIO_Pin & BACKUP_3V3_Pin) && (HAL_GPIO_ReadPin(BACKUP_3V3_GPIO_Port, BACKUP_3V3_Pin) == GPIO_PIN_SET)){
+		 led_indicator_client_set_state(LED_INDICATOR_CLIENT_POWER_E, LED_INDICATOR_CLIENT_STATE_POWER_ON_E);
+	 }
+}
+
+
+
 /* USER CODE END 4 */
 
 /* USER CODE BEGIN Header_StartDefaultTask */
@@ -540,13 +567,32 @@ static void MX_GPIO_Init(void)
 void StartDefaultTask(void *argument)
 {
   /* USER CODE BEGIN 5 */
+
+
+//	if(HAL_TIM_Base_Start_IT(&htim3) != HAL_OK)
+//	{
+//		Error_Handler();
+//	}
+
+
   /* Infinite loop */
   for(;;)
   {
+
+//	  uint8_t received_flag = osEventFlagsWait(atc_xfer_event_group, ATC_XFER_COMPLETED_E | ATC_XFER_TIMEOUT_E, osFlagsWaitAny, osWaitForever);
+//	  if(received_flag & ATC_XFER_COMPLETED_E){
+//		HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
+//	  }
+
+//	  uint8_t wdt_flag = osEventFlagsWait(wdtEventFlagHandle, EVENT_FLAG_WDT_E, osFlagsWaitAny, osWaitForever);
+//	  if(wdt_flag){
+//		  HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
+//	  }
 //	char message[] = "tes";
 //	HAL_UART_Transmit(&huart1, (uint8_t *)message, sizeof(message), 1000);
-	HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
-    osDelay(1000);
+//	HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
+//	printf("tes");
+//    osDelay(1000);
   }
   /* USER CODE END 5 */
 }
@@ -568,7 +614,10 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     HAL_IncTick();
   }
   /* USER CODE BEGIN Callback 1 */
+  if (htim->Instance == TIM3){
 
+//	  osEventFlagsSet(wdtEventFlagHandle, EVENT_FLAG_WDT_E);
+  }
   /* USER CODE END Callback 1 */
 }
 
