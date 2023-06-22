@@ -15,11 +15,12 @@
 
 enum{
 //	EVENT_FLAG_WDT_E =  0x01 << 0,
-	EVENT_FLAG_WDT_E = 0x01 <<1
-//	EVENT_FLAG_UART_E = 0x01 << 1
+	EVENT_FLAG_WDT_E = 0x01 <<1,
+	EVENT_FLAG_WDT_RESPONSE_OK_E = 0x01 << 2
 };
 
 void wdt_task_init(void *args);
 void wdt_task();
+
 
 #endif /* INC_WDT_TASK_H_ */

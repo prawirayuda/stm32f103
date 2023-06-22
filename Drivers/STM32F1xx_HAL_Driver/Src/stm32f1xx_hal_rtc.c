@@ -1610,6 +1610,8 @@ static uint32_t RTC_ReadTimeCounter(RTC_HandleTypeDef *hrtc)
   return timecounter;
 }
 
+
+
 /**
   * @brief  Write the time counter in RTC_CNT registers.
   * @param  hrtc   pointer to a RTC_HandleTypeDef structure that contains

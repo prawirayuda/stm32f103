@@ -11,6 +11,7 @@
 #include <stdbool.h>
 #include "atc_processor.h"
 #include "serial_communication.h"
+#include "wdt_task.h"
 
 #define ATC_TIMER_STOP osTimerStop(atc_xfer_timer)
 
@@ -26,6 +27,8 @@ extern struct tsm_UARTHandle internalComm;
 extern osEventFlagsId_t uart_xfer_event_group;
 extern osEventFlagsId_t connection_flag_event;
 extern osEventFlagsId_t boot_sequence_event_group;
+extern osEventFlagsId_t wdt_response_event_flag_handle;
+
 processor_handle_t urc_processor_hndl;
 urc_expected_data_s urc_data;
 connectivity_urc_s urc_conn;
@@ -431,13 +434,14 @@ void internal_receive_urc(void){
 	struct uartDataQueue rxQueue;
 	ret = osMessageQueueGet(internalComm.rxQueue, &rxQueue, 0U, osWaitForever);
 
+
 	// Check if is probably an URC
 	bool isNewline = is_uart_queue_data_newline_terminated(internalComm.circularReceiver.rx_buff, &rxQueue);
 
 	if (isNewline){
 		// Dequeue to buff
 		uart_dequeue_to_buffer((char *)urc_processor_hndl.processing_buff, &urc_processor_hndl.processing_data_size, internalComm.circularReceiver.rx_buff, &rxQueue);
-
+		osEventFlagsSet(wdt_response_event_flag_handle, EVENT_FLAG_WDT_RESPONSE_OK_E);
 		// process each`
 		dispatch_urc_as_newline_terminated((uint8_t *)urc_processor_hndl.processing_buff, urc_processor_hndl.processing_data_size);
 	}else{
